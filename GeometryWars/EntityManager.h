@@ -7,9 +7,6 @@
 using EntityVec = std::vector<std::shared_ptr<Entity>>;
 using EntityMap = std::map<std::string, EntityVec>;
 
-//typedef std::vector<std::shared_ptr<Entity>> EntityVec;
-//typedef std::map<std::string, EntityVec> EntityMap;
-
 class EntityManager
 {
 	EntityVec m_entities;
@@ -17,7 +14,7 @@ class EntityManager
 	EntityMap m_entityMap;
 	size_t m_totalEntities = 0;
 
-	void removeDeadEntites(EntityVec& vec);
+	void removeDeadEntities(EntityVec& vec);
 
 public:
 	EntityManager();

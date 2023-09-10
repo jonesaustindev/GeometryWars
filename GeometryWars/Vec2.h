@@ -24,4 +24,6 @@ public:
 
 	float dist(const Vec2& rhs) const;
 	float length() const;
+	Vec2 difference(const Vec2& rhs);
+	Vec2 normalize(const Vec2& rhs);
 };

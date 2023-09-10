@@ -7,10 +7,7 @@ EntityManager::EntityManager()
 
 void EntityManager::update()
 {
-	// TODO: add entities from m_entitiesToAdd to the proper location(s)
-	//        - add them to the vector of all entities
-	// 	      - add them to the vector inside the map, with the tag as a key
-
+	// Add all entities in the m_entitiesToAdd vector to the m_entities vector and m_entityMap
 	for (auto& e : m_entitiesToAdd)
 	{
 		m_entities.push_back(e);
@@ -19,46 +16,32 @@ void EntityManager::update()
 
 	m_entitiesToAdd.clear();
 
-	removeDeadEntites(m_entities);
+	// Remove all dead entities from the m_entities vector and m_entityMap
+	for (auto& pair : m_entityMap)
+	{
+		const std::string& tag = pair.first;
+		EntityVec& entityVec = pair.second;
 
-	// remove dead entities from each vector in the entity map
-	// C++17 way of iteration through |key, value| pairs in a map
-	//for (auto& [tag, entityVec] : m_entityMap)
-	//{
-	//	removeDeadEntites(entityVec);
-	//}
-
-	//// remove dead entities
-	//removeDeadEntites(m_entities);
-	//// add new entities
-	//for (auto& e : m_entitiesToAdd)
-	//{
-	//	m_entities.push_back(e);
-	//	m_entityMap[e->tag()].push_back(e);
-	//}
-	//m_entitiesToAdd.clear();
-	//// update all entities
-	//for (auto& e : m_entities)
-	//{
-	//	if (e->isActive())
-	//	{
-	//		e->update();
-	//	}
-	//}
+		removeDeadEntities(entityVec);
+	}
 }
 
-void EntityManager::removeDeadEntites(EntityVec& vec)
+void EntityManager::removeDeadEntities(EntityVec& vec)
 {
-	// TODO: remove all dead entities from the input vector
-	//        this is called by the upate function
-
-	for (auto& e : vec)
-	{
-		if (!e->isActive())
+	// Use the erase-remove idiom to remove inactive entities
+	vec.erase(std::remove_if(vec.begin(), vec.end(),
+		[](const std::shared_ptr<Entity>& entity)
 		{
-			// std::remove_if
-			vec.erase(std::remove(vec.begin(), vec.end(), e), vec.end());
-		}
+			return !entity->isActive();
+		}),
+		vec.end());
+
+	// Now, update m_entities based on the changes in entityVec
+	m_entities.clear();
+	for (const auto& pair : m_entityMap)
+	{
+		const EntityVec& vec = pair.second;
+		m_entities.insert(m_entities.end(), vec.begin(), vec.end());
 	}
 }
 

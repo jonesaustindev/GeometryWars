@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <algorithm>
+#include "Util.h"
 
 Game::Game(const std::string& config)
 {
@@ -91,16 +93,6 @@ void Game::spawnEnemy()
 	// the enemy must be spawned completely within the bounds of the window
 
 	auto entity = m_entities.addEntity("enemy");
-	// Add the entity to the entity map with the "enemy" tag
-	//m_entities.getEntities("enemy").push_back(entity);
-
-	//std::cout << "Adding entity with tag 'enemy'\n";
-	//auto entity = std::make_shared<Entity>(); // Create an Entity instance
-	//m_entityMap["enemy"].push_back(entity); // Add the entity to the 'enemy' tag
-
-	std::cout << "Size of m_entities: " << m_entities.getEntities().size() << "\n";
-	std::cout << "Size of m_entityMap['enemy']: " << m_entities.getEntities("enemy").size() << "\n";
-
 
 	// TODO: will need to modify this
 	float ex = rand() % m_window.getSize().x;
@@ -110,6 +102,12 @@ void Game::spawnEnemy()
 	entity->cTransform = std::make_shared<CTransform>(Vec2(ex, ey), Vec2(1.0f, 1.0f), 0.0f);
 	entity->cShape = std::make_shared<CShape>(16.0f, 3, sf::Color(0, 0, 255), sf::Color(255, 255, 255), 4.0f);
 	entity->cCollision = std::make_shared<CCollision>(16.0f);
+
+	// Set random initial velocity within a range (e.g., -2.0 to 2.0 in both x and y directions)
+	float minVelocity = -2.0f;
+	float maxVelocity = 2.0f;
+	entity->cTransform->velocity.x = minVelocity + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (maxVelocity - minVelocity)));
+	entity->cTransform->velocity.y = minVelocity + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (maxVelocity - minVelocity)));
 
 	// record when the most recent enemy was spawned
 	m_lastEnemySpawnTime = m_currentFrame;
@@ -127,14 +125,18 @@ void Game::spawnSmallEnemies(std::shared_ptr<Entity> entity)
 
 void Game::spawnBullet(std::shared_ptr<Entity> entity, const Vec2& target)
 {
-	// TODO: implement the spaning of a bullet which travels toward target
-	// - bullet speed is given as a scalar speed
-	// - must set the velocity by using formula in notes
-
 	auto bullet = m_entities.addEntity("bullet");
 
-	bullet->cTransform = std::make_shared<CTransform>(target, Vec2(0.0f, 0.0f), 0.0f);
+	bullet->cTransform = std::make_shared<CTransform>(entity->cTransform->position, Vec2(1.0f, 1.0f), 0.0f);
 	bullet->cShape = std::make_shared<CShape>(10.0f, 8, sf::Color(255, 255, 255), sf::Color(255, 0, 0), 2.0f);
+	bullet->cCollision = std::make_shared<CCollision>(10.0f);
+
+	Vec2 difference = target - bullet->cTransform->position;
+	float distanceSq = difference.x * difference.x + difference.y * difference.y;
+	float length = Util::sqrt(distanceSq);
+	Vec2 normalizedVector = Vec2(difference.x / length, difference.y / length);
+
+	bullet->cTransform->velocity = Vec2(5.0f * normalizedVector.x, 5.0f * normalizedVector.y);
 }
 
 void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
@@ -146,7 +148,6 @@ void Game::sMovement()
 {
 	// TODO: implement all entity movement in this function
 	// you should read the m_player->cInput->m_direction variable to determine the direction of the player
-
 	m_player->cTransform->velocity = { 0, 0 };
 
 	// implement player movement
@@ -178,7 +179,35 @@ void Game::sMovement()
 	m_player->cTransform->position.x += m_player->cTransform->velocity.x; // * m_playerConfig.V;
 	m_player->cTransform->position.y += m_player->cTransform->velocity.y; // * m_playerConfig.V;
 
-	// TODO: implement enemy movement
+	// Enemy movement
+	for (auto& e : m_entities.getEntities("enemy"))
+	{
+		// check if the shape is out of bound and reverse its direction if needed
+		if (e->cTransform->position.x < 0 || e->cTransform->position.x + (e->cShape->circle.getLocalBounds().width / 2) > m_window.getSize().x)
+		{
+			e->cTransform->velocity.x *= -1.0f;
+		}
+		if (e->cTransform->position.y < 0 || e->cTransform->position.y + (e->cShape->circle.getLocalBounds().height / 2) > m_window.getSize().y)
+		{
+			e->cTransform->velocity.y *= -1.0f;
+		}
+
+		e->cTransform->position.x += e->cTransform->velocity.x;
+		e->cTransform->position.y += e->cTransform->velocity.y;
+	}
+
+	// Bullet movement
+	for (auto& b : m_entities.getEntities("bullet"))
+	{
+		b->cTransform->position.x += b->cTransform->velocity.x;
+		b->cTransform->position.y += b->cTransform->velocity.y;
+
+		std::cout << "bullet velocity X: " << b->cTransform->velocity.x << "\n";
+		std::cout << "bullet velocity Y: " << b->cTransform->velocity.y << "\n";
+
+		std::cout << "bullet position X: " << b->cTransform->position.x << "\n";
+		std::cout << "bullet position Y: " << b->cTransform->position.y << "\n";
+	}
 }
 
 void Game::sLifeSpan()
@@ -196,37 +225,33 @@ void Game::sLifeSpan()
 
 void Game::sCollision()
 {
-	// TODO: immplement all proper collisions between entities
-	//    be sure to use the collision radius, NOT the shape radius
+	for (auto& b : m_entities.getEntities("bullet"))
+	{
+		for (auto& e : m_entities.getEntities("enemy"))
+		{
+			Vec2 difference = e->cTransform->position - b->cTransform->position;
+			float distanceSq = difference.dist(difference);
+			bool collision = distanceSq < (e->cCollision->radius + b->cCollision->radius) * (e->cCollision->radius + b->cCollision->radius);
 
-	//for (auto& b : m_entities.getEntities("bullet"))
-	//{
-	//	for (auto& e : m_entities.getEntities("enemy"))
-	//	{
-	//		Vec2 difference = Vec2(e->cTransform->position.x - b->cTransform->position.x, e->cTransform->position.y - b->cTransform->position.y);
-	//		float distanceSq = difference.x * difference.x + difference.y * difference.y;
-	//		bool collision = distanceSq < (e->cCollision->radius + b->cCollision->radius) * (e->cCollision->radius + b->cCollision->radius);
-
-	//		std::cout << "Collision: " << collision << "\n";
-	//	}
-	//}
+			if (collision)
+			{
+				e->destroy();
+			}
+		}
+	}
 
 	for (auto& e : m_entities.getEntities("enemy"))
 	{
 		for (auto& p : m_entities.getEntities("player"))
 		{
-			//if (!e || !p)
-			//{
-			//	continue;
-			//}
-
-			Vec2 difference = Vec2(e->cTransform->position.x - p->cTransform->position.x, e->cTransform->position.y - p->cTransform->position.y);
-			float distanceSq = difference.x * difference.x + difference.y * difference.y;
+			Vec2 difference = e->cTransform->position - p->cTransform->position;
+			float distanceSq = difference.dist(difference);
 			bool collision = distanceSq < (e->cCollision->radius + p->cCollision->radius) * (e->cCollision->radius + p->cCollision->radius);
 
-			if (collision)
+			if (collision && p->isActive())
 			{
-				std::cout << "Collision: " << collision << "\n";
+				p->destroy();
+				spawnPlayer();
 			}
 		}
 	}
@@ -234,19 +259,7 @@ void Game::sCollision()
 
 void Game::sRender()
 {
-	// TODO: change the code below to draw ALL of the entities
-	//    sample drawin gof the player Entity that we have created
 	m_window.clear();
-
-	//// set the position of the shape based on the entitye's transform->pos
-	//m_player->cShape->circle.setPosition(m_player->cTransform->position.x, m_player->cTransform->position.y);
-
-	//// set the rotation of the shape based on the entity's transform->angle
-	//m_player->cTransform->angle += 1.0f;
-	//m_player->cShape->circle.setRotation(m_player->cTransform->angle);
-
-	//// draw the entity's shape
-	//m_window.draw(m_player->cShape->circle);
 
 	for (auto& e : m_entities.getEntities())
 	{
@@ -265,11 +278,6 @@ void Game::sRender()
 
 void Game::sUserInput()
 {
-	// TODO: implement all user input handling
-	//       note that it should only be setting the player's input component variables here
-	//       should not implement the player's movement here
-	//       they movement system will read the variabler set here and move the player
-
 	sf::Event event;
 	while (m_window.pollEvent(event))
 	{
