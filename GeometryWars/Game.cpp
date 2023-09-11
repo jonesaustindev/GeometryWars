@@ -46,6 +46,7 @@ void Game::run()
 
 		sEnemySpawner();
 		sMovement();
+		sLifeSpan();
 		sCollision();
 		sUserInput();
 		sRender();
@@ -130,6 +131,7 @@ void Game::spawnBullet(std::shared_ptr<Entity> entity, const Vec2& target)
 	bullet->cTransform = std::make_shared<CTransform>(entity->cTransform->position, Vec2(1.0f, 1.0f), 0.0f);
 	bullet->cShape = std::make_shared<CShape>(10.0f, 8, sf::Color(255, 255, 255), sf::Color(255, 0, 0), 2.0f);
 	bullet->cCollision = std::make_shared<CCollision>(10.0f);
+	bullet->cLifespan = std::make_shared<CLifespan>(100);
 
 	Vec2 difference = target - bullet->cTransform->position;
 	float distanceSq = difference.x * difference.x + difference.y * difference.y;
@@ -146,8 +148,6 @@ void Game::spawnSpecialWeapon(std::shared_ptr<Entity> entity)
 
 void Game::sMovement()
 {
-	// TODO: implement all entity movement in this function
-	// you should read the m_player->cInput->m_direction variable to determine the direction of the player
 	m_player->cTransform->velocity = { 0, 0 };
 
 	// implement player movement
@@ -176,8 +176,8 @@ void Game::sMovement()
 	}
 
 	// Sample movement speed update
-	m_player->cTransform->position.x += m_player->cTransform->velocity.x; // * m_playerConfig.V;
-	m_player->cTransform->position.y += m_player->cTransform->velocity.y; // * m_playerConfig.V;
+	m_player->cTransform->position.x += m_player->cTransform->velocity.x;
+	m_player->cTransform->position.y += m_player->cTransform->velocity.y;
 
 	// Enemy movement
 	for (auto& e : m_entities.getEntities("enemy"))
@@ -201,26 +201,30 @@ void Game::sMovement()
 	{
 		b->cTransform->position.x += b->cTransform->velocity.x;
 		b->cTransform->position.y += b->cTransform->velocity.y;
-
-		std::cout << "bullet velocity X: " << b->cTransform->velocity.x << "\n";
-		std::cout << "bullet velocity Y: " << b->cTransform->velocity.y << "\n";
-
-		std::cout << "bullet position X: " << b->cTransform->position.x << "\n";
-		std::cout << "bullet position Y: " << b->cTransform->position.y << "\n";
 	}
 }
 
 void Game::sLifeSpan()
 {
-	// TODO: implement all lifespan functionality
-	//
-	// for all entities
-	//     if entity has no lifespan component, skip it
-	//     if entity has > 0 remaining lifespan, decrease lifespan by 1
-	//     if it has lifespace and is alive
-	//         scale its alpha channel properly
-	//     if it has lifespan and its time is up
-	// 	       destroy the entity
+	for (auto& e : m_entities.getEntities())
+	{
+		if (e->cLifespan)
+		{
+			if (e->cLifespan->remaining > 0)
+			{
+				e->cLifespan->remaining -= 1;
+
+				int alpha = (e->cLifespan->remaining * 255) / e->cLifespan->total;
+
+				e->cShape->circle.setFillColor(sf::Color(255, 255, 255, alpha));
+				e->cShape->circle.setOutlineColor(sf::Color(255, 0, 0, alpha));
+			}
+			else
+			{
+				e->destroy();
+			}
+		}
+	}
 }
 
 void Game::sCollision()
