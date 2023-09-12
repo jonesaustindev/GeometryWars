@@ -122,6 +122,22 @@ void Game::spawnSmallEnemies(std::shared_ptr<Entity> entity)
 	// - spawn a number of small enemies equal to the vertices of the original enemy
 	// - set each small enemy to the same color as the original, half the size
 	// - small enemies are worth double points of the original enemy
+	// - have half radius of original
+	// - goes out equally from 360 deg
+
+	int vertices = entity->cShape->circle.getPointCount();
+	int intervalDegree = 360 / vertices;
+
+	for (int i = 0; i < 5; ++i)
+	{
+		int degree = intervalDegree * (i + 1);
+
+		auto smallEntity = m_entities.addEntity("enemy");
+
+		smallEntity->cTransform = std::make_shared<CTransform>(entity->cTransform->position, Vec2(2.0f, 2.0f), degree);
+		smallEntity->cShape = std::make_shared<CShape>(16.0f, 3, sf::Color(0, 0, 255), sf::Color(255, 255, 255), 4.0f);
+		smallEntity->cCollision = std::make_shared<CCollision>(16.0f);
+	}
 }
 
 void Game::spawnBullet(std::shared_ptr<Entity> entity, const Vec2& target)
